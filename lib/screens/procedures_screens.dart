@@ -1,12 +1,16 @@
 import 'dart:convert';
 
+import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vehicles_app/components/loader_componet.dart';
+import 'package:vehicles_app/helpers/api_helper.dart';
 import 'package:vehicles_app/helpers/constans.dart';
 import 'package:vehicles_app/models/procedure.dart';
+import 'package:vehicles_app/models/responrse.dart';
 import 'package:vehicles_app/models/token.dart';
 import 'package:http/http.dart' as http;
+import 'package:vehicles_app/screens/procedure_screen.dart';
 
 class ProceduresScreen extends StatefulWidget {
   final Token token;
@@ -38,7 +42,17 @@ bool _showLoader=false;
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
-        onPressed: () {  },
+        onPressed: () { 
+          Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context)=>ProcedureScreen(
+              token: widget.token,
+              procedure: Procedure(id: 0, description: '', price: 0),
+              )
+            )
+          );
+         },
       ),
     );
   }
@@ -49,27 +63,27 @@ bool _showLoader=false;
       _showLoader=true;
     });
 
-    var url=Uri.parse('${Constans.apiUrl}/api/Procedures');
-    var response=await http.get(
-      url,
-      headers:{
-        'content-type':'application/json',
-        'accept' : 'application/json',
-        'authorization':'bearer ${widget.token.token}',
-      },
-    );
+    Response response=await ApiHelper.getProcedures(widget.token.token);
 
     setState(() {
       _showLoader=false;
     });
 
-    var body = response.body;
-    var decodeJson = jsonDecode(body);
-    if(decodeJson!=null){
-      for (var item in decodeJson) {
-        _procedures.add(Procedure.fromJson(item));
-      }
+    if(!response.isSuccess){
+      await showAlertDialog(
+        context: context,
+        title: 'Error',
+        message: response.message,
+        actions: <AlertDialogAction>[
+          AlertDialogAction(key: null, label: 'Aceptar'),
+        ]
+        );
+        return;
     }
+
+    setState(() {
+      _procedures=response.result;
+    });
   }
 
 Widget _getContent() {
@@ -99,7 +113,17 @@ Widget _getContent() {
     children: _procedures.map((e){
       return Card(
         child: InkWell(
-          onTap: (){},
+          onTap: (){
+          Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context)=>ProcedureScreen(
+              token: widget.token,
+              procedure: e,
+              )
+            )
+          );
+          },
           child: Container(
             margin: EdgeInsets.all(10),
             padding: EdgeInsets.all(5),
@@ -111,7 +135,7 @@ Widget _getContent() {
                     Text(
                       e.description,
                       style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 20,
                     ),
                     ),
                     Icon(Icons.arrow_forward_ios)
